@@ -1,17 +1,13 @@
 services:
   - type: web
     name: mybe
-    runtime: node
+    runtime: docker
     region: oregon
     plan: free
-    buildCommand: npm install -g pnpm && pnpm install && pnpm build
-    startCommand: pnpm start
     healthCheckPath: /
     envVars:
       - key: NODE_ENV
         value: production
-      - key: NODE_VERSION
-        value: "20"
       - key: NVIDIA_API_KEY
         sync: false
       - key: NEXT_PUBLIC_FIREBASE_API_KEY
