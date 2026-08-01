@@ -17,19 +17,21 @@ interface HeaderProps {
 export function Header({ user, credits, onUserChange }: HeaderProps) {
   const [loading, setLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [signInError, setSignInError] = useState('');
   const router = useRouter();
 
   const handleSignIn = async () => {
     try {
       setLoading(true);
+      setSignInError('');
       const user = await signInWithGoogle();
       if (user) {
         onUserChange?.(user);
         router.push('/dashboard');
       }
-      // If user is null, redirect fallback was used — keep loading
     } catch (e: any) {
       console.error('Sign in failed:', e?.code, e?.message);
+      setSignInError(e?.code || e?.message || 'Sign in failed');
       setLoading(false);
     }
   };
@@ -118,14 +120,19 @@ export function Header({ user, credits, onUserChange }: HeaderProps) {
                 </div>
               </>
             ) : (
-              <Button onClick={handleSignIn} disabled={loading} size="sm" className="bg-gradient-to-r from-violet-600 to-cyan-500 hover:opacity-90 border-0 text-white">
-                {loading ? (
-                  <span className="flex items-center gap-2">
-                    <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                    Signing in...
-                  </span>
-                ) : 'Sign in with Google'}
-              </Button>
+              <div className="flex flex-col items-end gap-1">
+                <Button onClick={handleSignIn} disabled={loading} size="sm" className="bg-gradient-to-r from-violet-600 to-cyan-500 hover:opacity-90 border-0 text-white">
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                      Signing in...
+                    </span>
+                  ) : 'Sign in with Google'}
+                </Button>
+                {signInError && (
+                  <span className="text-xs text-red-500 max-w-[200px] text-right">{signInError}</span>
+                )}
+              </div>
             )}
 
             {/* Mobile menu */}
