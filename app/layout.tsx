@@ -3,7 +3,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Mybe - AI 3D Model Generator',
-  description: 'Generate stunning 3D models from text using NVIDIA TRELLIS AI. Get 100 free credits on signup.',
+  description: 'Generate stunning 3D models from text using Mybe AI. Get 100 free credits on signup.',
 };
 
 export const viewport: Viewport = {

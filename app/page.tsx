@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { User, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Header } from '@/components/header';
@@ -15,6 +16,7 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [credits, setCredits] = useState<number | undefined>();
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -23,6 +25,8 @@ export default function Home() {
       if (u) {
         const c = await getUserCredits(u.uid);
         setCredits(c);
+        // Redirect signed-in users to dashboard
+        router.replace('/dashboard');
       }
     });
     return unsub;
@@ -43,7 +47,7 @@ export default function Home() {
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/10 border border-violet-500/20 mb-8">
             <Sparkles className="w-4 h-4 text-violet-500" />
             <span className="text-sm font-medium text-violet-600 dark:text-violet-400">
-              Powered by NVIDIA TRELLIS AI
+              State-of-the-art AI · Free to start
             </span>
           </div>
 
@@ -55,7 +59,7 @@ export default function Home() {
           </h1>
 
           <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-            Describe anything. Mybe generates a high-quality 3D model in minutes using NVIDIA&apos;s TRELLIS technology.
+            Describe anything. Mybe&apos;s AI generates a high-quality 3D model in minutes.
             Every new account gets{' '}
             <span className="font-bold text-foreground">100 free credits</span>.
           </p>
@@ -117,7 +121,7 @@ export default function Home() {
               {
                 step: '02',
                 icon: <Zap className="w-6 h-6 text-fuchsia-500" />,
-                title: 'NVIDIA TRELLIS processes it',
+                title: 'Mybe AI processes it',
                 desc: 'Our AI pipeline converts your text to a high-quality image, then into a full 3D model.',
               },
               {
@@ -168,7 +172,7 @@ export default function Home() {
       </section>
 
       <footer className="border-t border-border/40 px-4 py-8 text-center text-sm text-muted-foreground">
-        <p>Mybe &copy; 2026 · Powered by NVIDIA TRELLIS AI · Vercel Blob Storage</p>
+        <p>Mybe &copy; 2026 · AI-powered 3D generation · All rights reserved</p>
       </footer>
     </div>
   );

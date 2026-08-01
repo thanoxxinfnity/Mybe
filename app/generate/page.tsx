@@ -25,14 +25,14 @@ const EXAMPLES = [
 ];
 
 const STAGES = [
-  { label: 'Submitting to NVIDIA AI...', pct: 5 },
-  { label: 'Generating detailed image from your prompt...', pct: 20 },
+  { label: 'Starting generation...', pct: 5 },
+  { label: 'Creating image from your prompt...', pct: 20 },
   { label: 'Enhancing image quality...', pct: 35 },
-  { label: 'Sending to NVIDIA TRELLIS for 3D processing...', pct: 50 },
-  { label: 'TRELLIS building 3D structure...', pct: 62 },
+  { label: 'Converting to 3D...', pct: 50 },
+  { label: 'Building 3D structure...', pct: 62 },
   { label: 'Generating high-res textures...', pct: 74 },
   { label: 'Finalizing 3D mesh...', pct: 84 },
-  { label: 'Uploading to Vercel Blob storage...', pct: 93 },
+  { label: 'Saving your model...', pct: 93 },
   { label: 'Almost done...', pct: 97 },
 ];
 
@@ -194,7 +194,7 @@ export default function GeneratePage() {
         <div className="mb-10">
           <h1 className="text-3xl sm:text-4xl font-extrabold mb-2">Generate 3D Model</h1>
           <p className="text-muted-foreground">
-            Describe your model — NVIDIA TRELLIS generates it at max quality, saved to Vercel Blob.
+            Describe your model — Mybe AI generates it at max quality and saves it to the cloud.
           </p>
         </div>
 
@@ -263,7 +263,7 @@ export default function GeneratePage() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                ⏱ Takes 2–5 minutes · NVIDIA TRELLIS is processing · Keep this tab open
+                ⏱ Takes 2–5 minutes · AI is processing your model · Keep this tab open
               </p>
             </div>
           )}

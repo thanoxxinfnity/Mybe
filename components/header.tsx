@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { User } from 'firebase/auth';
 import { signInWithGoogle, signOutUser } from '@/lib/auth-helper';
 import { Button } from '@/components/ui/button';
@@ -16,14 +17,16 @@ interface HeaderProps {
 export function Header({ user, credits, onUserChange }: HeaderProps) {
   const [loading, setLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const router = useRouter();
 
   const handleSignIn = async () => {
     try {
       setLoading(true);
       const u = await signInWithGoogle();
       onUserChange?.(u);
-    } catch (e) {
-      console.error('Sign in failed:', e);
+      if (u) router.push('/dashboard');
+    } catch (e: any) {
+      console.error('Sign in failed:', e?.code, e?.message);
     } finally {
       setLoading(false);
     }
@@ -35,6 +38,7 @@ export function Header({ user, credits, onUserChange }: HeaderProps) {
       await signOutUser();
       onUserChange?.(null);
       setMenuOpen(false);
+      router.push('/');
     } catch (e) {
       console.error('Sign out failed:', e);
     } finally {
@@ -112,8 +116,13 @@ export function Header({ user, credits, onUserChange }: HeaderProps) {
                 </div>
               </>
             ) : (
-              <Button onClick={handleSignIn} disabled={loading} size="sm" className="bg-gradient-to-r from-violet-600 to-cyan-500 hover:opacity-90 border-0">
-                {loading ? 'Signing in...' : 'Sign in with Google'}
+              <Button onClick={handleSignIn} disabled={loading} size="sm" className="bg-gradient-to-r from-violet-600 to-cyan-500 hover:opacity-90 border-0 text-white">
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                    Signing in...
+                  </span>
+                ) : 'Sign in with Google'}
               </Button>
             )}
 
