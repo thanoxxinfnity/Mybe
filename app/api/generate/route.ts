@@ -1,201 +1,162 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
-import {
-  generateImageFromText,
-  submitTrellisGeneration,
-  pollTrellisStatus,
-  downloadModelFile,
-} from '@/lib/nvidia-api';
-import { uploadModelToBlob, uploadImageToBlob } from '@/lib/blob-storage';
 
-export const maxDuration = 300; // 5 minutes for Render / Node.js server
+export const maxDuration = 60;
 
-async function verifyToken(request: NextRequest): Promise<string | null> {
-  const auth = request.headers.get('authorization');
-  if (!auth?.startsWith('Bearer ')) return null;
-  const token = auth.slice(7);
+async function verifyToken(req: NextRequest): Promise<string | null> {
+  const h = req.headers.get('authorization');
+  if (!h?.startsWith('Bearer ')) return null;
   try {
-    const decoded = await adminAuth.verifyIdToken(token);
-    return decoded.uid;
+    const d = await adminAuth.verifyIdToken(h.slice(7));
+    return d.uid;
   } catch {
     return null;
   }
 }
 
-// POST /api/generate - Start a new text-to-3D generation
+// POST /api/generate — returns instantly, processes in background
 export async function POST(request: NextRequest) {
   const userId = await verifyToken(request);
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { prompt } = await request.json();
-  if (!prompt?.trim()) {
-    return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
-  }
+  const body = await request.json();
+  const prompt: string = body?.prompt?.trim();
+  if (!prompt) return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
 
   // Check credits
   const userSnap = await adminDb.collection('users').doc(userId).get();
-  if (!userSnap.exists) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
-  }
+  if (!userSnap.exists) return NextResponse.json({ error: 'User not found' }, { status: 404 });
   const userData = userSnap.data()!;
-  if ((userData.credits || 0) < 1) {
-    return NextResponse.json(
-      { error: 'Insufficient credits. You need at least 1 credit to generate a model.' },
-      { status: 402 }
-    );
+  const currentCredits: number = userData.credits ?? 0;
+  if (currentCredits < 1) {
+    return NextResponse.json({ error: 'No credits remaining. You have used all 100 credits.' }, { status: 402 });
   }
 
   const modelId = uuidv4();
   const now = new Date();
 
-  // Deduct credit immediately
-  await adminDb.collection('users').doc(userId).update({
-    credits: (userData.credits || 0) - 1,
-  });
+  // Deduct 1 credit immediately
+  await adminDb.collection('users').doc(userId).update({ credits: currentCredits - 1 });
 
-  // Save initial model record
+  // Create Firestore record
   await adminDb.collection('models').doc(modelId).set({
     id: modelId,
     userId,
     userName: userData.name || 'User',
     userAvatar: userData.avatar || null,
-    name: prompt.trim().slice(0, 80),
-    prompt: prompt.trim(),
+    name: prompt.slice(0, 80),
+    prompt,
     format: 'glb',
     modelUrl: '',
     thumbnailUrl: null,
     status: 'processing',
     nvidiaRequestId: null,
+    error: null,
     createdAt: now,
     updatedAt: now,
     downloads: 0,
     views: 0,
   });
 
-  // Start the full pipeline (runs within the request - works on Render's Node.js server)
-  try {
-    // Step 1: Text → Image (SDXL)
-    const imageBase64 = await generateImageFromText(prompt.trim());
+  // Run the heavy NVIDIA pipeline AFTER this response is sent
+  after(async () => {
+    try {
+      const { generateImageFromText, submitTrellisGeneration, pollTrellisStatus } = await import('@/lib/nvidia-api');
+      const { uploadModelToBlob, uploadImageToBlob } = await import('@/lib/blob-storage');
+      const { FieldValue } = await import('firebase-admin/firestore');
+      const axios = (await import('axios')).default;
 
-    // Save thumbnail
-    const thumbnailUrl = await uploadImageToBlob(imageBase64, userId, modelId).catch(() => null);
+      // Step 1 — Text → High-quality image (SDXL)
+      const imageBase64 = await generateImageFromText(prompt);
 
-    // Step 2: Submit image to TRELLIS
-    const submission = await submitTrellisGeneration(imageBase64);
+      // Save thumbnail to Vercel Blob
+      const thumbnailUrl = await uploadImageToBlob(imageBase64, userId, modelId).catch(() => null);
+      await adminDb.collection('models').doc(modelId).update({ thumbnailUrl, updatedAt: new Date() });
 
-    await adminDb.collection('models').doc(modelId).update({
-      thumbnailUrl,
-      nvidiaRequestId: submission.requestId,
-      updatedAt: new Date(),
-    });
+      // Step 2 — Image → 3D (TRELLIS)
+      const submission = await submitTrellisGeneration(imageBase64);
+      await adminDb.collection('models').doc(modelId).update({
+        nvidiaRequestId: submission.requestId,
+        updatedAt: new Date(),
+      });
 
-    // Step 3: If direct result available (200), process immediately
-    if (submission.directResult?.glbUrl) {
-      await finishGeneration(modelId, userId, submission.directResult.glbUrl, thumbnailUrl);
-      return NextResponse.json({ success: true, modelId, status: 'completed' });
-    }
+      let glbUrl: string | undefined;
 
-    // Otherwise poll until done
-    const requestId = submission.requestId;
-    let attempts = 0;
-    const maxAttempts = 40; // ~3 min total polling
-
-    while (attempts < maxAttempts) {
-      await sleep(5000);
-      attempts++;
-
-      const statusResult = await pollTrellisStatus(requestId);
-
-      if (statusResult.status === 'fulfilled' && statusResult.result?.glbUrl) {
-        await finishGeneration(modelId, userId, statusResult.result.glbUrl, thumbnailUrl);
-        return NextResponse.json({ success: true, modelId, status: 'completed' });
+      if (submission.directResult?.glbUrl) {
+        glbUrl = submission.directResult.glbUrl;
+      } else {
+        // Poll NVIDIA until done (max ~5 min)
+        for (let i = 0; i < 60; i++) {
+          await sleep(5000);
+          const s = await pollTrellisStatus(submission.requestId);
+          if (s.status === 'fulfilled' && s.result?.glbUrl) {
+            glbUrl = s.result.glbUrl;
+            break;
+          }
+          if (s.status === 'rejected') throw new Error(s.error || 'TRELLIS generation rejected');
+        }
       }
 
-      if (statusResult.status === 'rejected') {
-        throw new Error(statusResult.error || 'TRELLIS generation failed');
-      }
+      if (!glbUrl) throw new Error('Generation timed out — no model returned from NVIDIA');
+
+      // Download GLB from NVIDIA CDN
+      const glbResp = await axios.get(glbUrl, {
+        responseType: 'arraybuffer',
+        timeout: 120000,
+        headers: { Authorization: `Bearer ${process.env.NVIDIA_API_KEY}` },
+      });
+      const glbBuffer = Buffer.from(glbResp.data);
+
+      // Upload GLB to Vercel Blob (permanent storage)
+      const blobUrl = await uploadModelToBlob(glbBuffer, `${modelId}.glb`, userId);
+
+      // Mark complete
+      await adminDb.collection('models').doc(modelId).update({
+        modelUrl: blobUrl,
+        status: 'completed',
+        updatedAt: new Date(),
+      });
+      await adminDb.collection('users').doc(userId).update({
+        modelCount: FieldValue.increment(1),
+      });
+    } catch (err) {
+      // Refund credit on failure
+      const { FieldValue } = await import('firebase-admin/firestore');
+      await adminDb.collection('users').doc(userId).update({ credits: FieldValue.increment(1) });
+      await adminDb.collection('models').doc(modelId).update({
+        status: 'failed',
+        error: err instanceof Error ? err.message : 'Unknown error',
+        updatedAt: new Date(),
+      });
+      console.error('[generate] Pipeline failed:', err);
     }
-
-    throw new Error('Generation timed out after 3 minutes');
-  } catch (error) {
-    // Refund credit on failure
-    const currentSnap = await adminDb.collection('users').doc(userId).get();
-    const currentCredits = currentSnap.data()?.credits || 0;
-    await adminDb.collection('users').doc(userId).update({
-      credits: currentCredits + 1,
-    });
-
-    await adminDb.collection('models').doc(modelId).update({
-      status: 'failed',
-      error: error instanceof Error ? error.message : 'Generation failed',
-      updatedAt: new Date(),
-    });
-
-    console.error('[generate] Pipeline error:', error);
-    return NextResponse.json(
-      { error: 'Generation failed', modelId, status: 'failed' },
-      { status: 500 }
-    );
-  }
-}
-
-async function finishGeneration(
-  modelId: string,
-  userId: string,
-  glbUrl: string,
-  thumbnailUrl: string | null
-) {
-  // Download GLB from NVIDIA CDN and upload to Vercel Blob for permanence
-  const glbBuffer = await downloadModelFile(glbUrl);
-  const blobUrl = await uploadModelToBlob(glbBuffer, `${modelId}.glb`, userId);
-
-  const { FieldValue } = await import('firebase-admin/firestore');
-
-  await adminDb.collection('models').doc(modelId).update({
-    modelUrl: blobUrl,
-    thumbnailUrl: thumbnailUrl || null,
-    status: 'completed',
-    updatedAt: new Date(),
   });
 
-  await adminDb.collection('users').doc(userId).update({
-    modelCount: FieldValue.increment(1),
-  });
+  return NextResponse.json({ success: true, modelId, status: 'processing' });
 }
 
-// GET /api/generate?id=xxx - Check generation status
+// GET /api/generate?id=xxx — poll status
 export async function GET(request: NextRequest) {
   const userId = await verifyToken(request);
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const modelId = request.nextUrl.searchParams.get('id');
-  if (!modelId) {
-    return NextResponse.json({ error: 'Model ID required' }, { status: 400 });
-  }
+  if (!modelId) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
   const snap = await adminDb.collection('models').doc(modelId).get();
-  if (!snap.exists) {
-    return NextResponse.json({ error: 'Model not found' }, { status: 404 });
-  }
+  if (!snap.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const data = snap.data()!;
+  const d = snap.data()!;
   return NextResponse.json({
-    success: true,
-    model: {
-      id: data.id,
-      status: data.status,
-      modelUrl: data.modelUrl,
-      thumbnailUrl: data.thumbnailUrl,
-      error: data.error,
-    },
+    status: d.status,
+    modelId: d.id,
+    modelUrl: d.modelUrl || null,
+    thumbnailUrl: d.thumbnailUrl || null,
+    error: d.error || null,
   });
 }
 
 function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((r) => setTimeout(r, ms));
 }
