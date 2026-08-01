@@ -178,7 +178,7 @@ export default function GeneratePage() {
           </p>
           <Link href="/">
             <Button size="lg" className="bg-gradient-to-r from-violet-600 to-cyan-500 hover:opacity-90 border-0 text-white">
-              Sign in with Google
+              Sign Up Free — 100 Credits
             </Button>
           </Link>
         </main>

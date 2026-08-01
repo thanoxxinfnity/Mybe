@@ -1,19 +1,16 @@
 'use client';
 
 import {
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
-  GoogleAuthProvider,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut,
   onAuthStateChanged,
+  updateProfile,
   User,
 } from 'firebase/auth';
 import { auth } from './firebase';
 import { getUserProfile, createUserProfile } from './firestore-helpers';
-
-const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 async function ensureUserProfile(user: User): Promise<void> {
   try {
@@ -31,38 +28,29 @@ async function ensureUserProfile(user: User): Promise<void> {
   }
 }
 
-// Popup-based sign-in — stays on the same page, works on all browsers
-export async function signInWithGoogle(): Promise<User> {
-  try {
-    const result = await signInWithPopup(auth, googleProvider);
-    await ensureUserProfile(result.user);
-    return result.user;
-  } catch (err: any) {
-    // If popup is blocked, fall back to redirect
-    if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
-      await signInWithRedirect(auth, googleProvider);
-      // Will complete via checkRedirectResult on next page load
-      return null as any;
-    }
-    throw err;
-  }
+export async function signUpWithEmail(email: string, password: string, name: string): Promise<User> {
+  const result = await createUserWithEmailAndPassword(auth, email, password);
+  await updateProfile(result.user, { displayName: name });
+  await ensureUserProfile(result.user);
+  return result.user;
 }
 
-// Fallback: call on page load to complete any pending redirect sign-in
-export async function checkRedirectResult(): Promise<User | null> {
-  try {
-    const result = await getRedirectResult(auth);
-    if (!result?.user) return null;
-    await ensureUserProfile(result.user);
-    return result.user;
-  } catch (err: any) {
-    console.error('Redirect result error:', err?.code, err?.message);
-    return null;
-  }
+export async function signInWithEmail(email: string, password: string): Promise<User> {
+  const result = await signInWithEmailAndPassword(auth, email, password);
+  return result.user;
+}
+
+export async function resetPassword(email: string): Promise<void> {
+  await sendPasswordResetEmail(auth, email);
 }
 
 export async function signOutUser(): Promise<void> {
   await signOut(auth);
+}
+
+// Legacy — kept so AuthRedirectHandler doesn't break, always returns null now
+export async function checkRedirectResult(): Promise<User | null> {
+  return null;
 }
 
 export function getCurrentUser(): Promise<User | null> {

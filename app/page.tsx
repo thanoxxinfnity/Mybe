@@ -9,7 +9,7 @@ import { User, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Header } from '@/components/header';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Zap, Globe, Coins, ArrowRight } from 'lucide-react';
+import { Sparkles, Zap, Globe, Coins, ArrowRight, Mail } from 'lucide-react';
 import { getUserCredits } from '@/lib/firestore-helpers';
 
 export default function Home() {
