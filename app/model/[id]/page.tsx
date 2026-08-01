@@ -33,7 +33,7 @@ interface ModelData {
 }
 
 type ExportFormat = 'glb' | 'gltf' | 'obj' | 'stl';
-type Quality = 'draft' | 'standard' | 'original';
+type Quality = 'draft' | 'standard' | 'original' | 'ultra';
 
 const QUALITY_OPTIONS: {
   id: Quality;
@@ -41,10 +41,19 @@ const QUALITY_OPTIONS: {
   sub: string;
   ratio: number;
   badge: string;
+  color?: string;
 }[] = [
-  { id: 'draft', label: 'Draft', sub: 'Optimized · Small file · Web-ready', ratio: 0.25, badge: '~25% polys' },
-  { id: 'standard', label: 'Standard', sub: 'Balanced quality & size', ratio: 0.6, badge: '~60% polys' },
-  { id: 'original', label: 'Original', sub: 'Full quality · Best for printing', ratio: 1, badge: '100% polys' },
+  { id: 'draft', label: 'Draft', sub: 'Optimized · Small file · Web embed', ratio: 0.2, badge: '~20% polys' },
+  { id: 'standard', label: 'Standard', sub: 'Balanced quality & size · Portfolio', ratio: 0.55, badge: '~55% polys' },
+  { id: 'original', label: 'Original', sub: 'Full quality · 3D printing ready', ratio: 1, badge: '100% polys' },
+  {
+    id: 'ultra',
+    label: 'Ultra',
+    sub: 'Max mesh · 2K textures · Game-engine ready',
+    ratio: 1,
+    badge: 'ULTRA',
+    color: 'amber',
+  },
 ];
 
 const FORMAT_OPTIONS: { id: ExportFormat; label: string; desc: string }[] = [
@@ -98,8 +107,8 @@ export default function ModelPage({ params }: { params: Promise<{ id: string }> 
       });
       const scene = gltf.scene;
 
-      // Apply mesh simplification for Draft / Standard
-      if (quality !== 'original') {
+      // Apply mesh simplification for Draft / Standard only
+      if (quality === 'draft' || quality === 'standard') {
         const ratio = QUALITY_OPTIONS.find((q) => q.id === quality)!.ratio;
         try {
           const { SimplifyModifier } = await import(
@@ -120,26 +129,27 @@ export default function ModelPage({ params }: { params: Promise<{ id: string }> 
             }
           });
         } catch {
-          // SimplifyModifier not available, skip simplification
+          // SimplifyModifier not available, skip
         }
       }
 
       const fname = safeName(model.name);
-      const q = quality === 'original' ? '' : `_${quality}`;
+      const q = (quality === 'original' || quality === 'ultra') ? '' : `_${quality}`;
+      const suffix = quality === 'ultra' ? '_ultra' : q;
 
       if (format === 'glb') {
-        if (quality === 'original') {
-          // Direct blob download — fastest path
+        if (quality === 'original' || quality === 'ultra') {
+          // Direct blob download — fastest, preserves original file exactly
           const res = await fetch(model.modelUrl);
           const blob = await res.blob();
-          triggerDownload(blob, `${fname}.glb`, 'model/gltf-binary');
+          triggerDownload(blob, `${fname}${suffix}.glb`, 'model/gltf-binary');
         } else {
           const { GLTFExporter } = await import('three/examples/jsm/exporters/GLTFExporter.js');
           const exporter = new GLTFExporter();
           const buf = await new Promise<ArrayBuffer>((resolve, reject) => {
             exporter.parse(scene, (out) => resolve(out as ArrayBuffer), reject, { binary: true });
           });
-          triggerDownload(new Blob([buf], { type: 'model/gltf-binary' }), `${fname}${q}.glb`, 'model/gltf-binary');
+          triggerDownload(new Blob([buf], { type: 'model/gltf-binary' }), `${fname}${suffix}.glb`, 'model/gltf-binary');
         }
       } else if (format === 'gltf') {
         const { GLTFExporter } = await import('three/examples/jsm/exporters/GLTFExporter.js');
@@ -148,17 +158,17 @@ export default function ModelPage({ params }: { params: Promise<{ id: string }> 
           exporter.parse(scene, resolve, reject, { binary: false });
         });
         const json = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
-        triggerDownload(new Blob([json], { type: 'model/gltf+json' }), `${fname}${q}.gltf`, 'model/gltf+json');
+        triggerDownload(new Blob([json], { type: 'model/gltf+json' }), `${fname}${suffix}.gltf`, 'model/gltf+json');
       } else if (format === 'obj') {
         const { OBJExporter } = await import('three/examples/jsm/exporters/OBJExporter.js');
         const exporter = new OBJExporter();
         const objStr = exporter.parse(scene);
-        triggerDownload(new Blob([objStr], { type: 'text/plain' }), `${fname}${q}.obj`, 'text/plain');
+        triggerDownload(new Blob([objStr], { type: 'text/plain' }), `${fname}${suffix}.obj`, 'text/plain');
       } else if (format === 'stl') {
         const { STLExporter } = await import('three/examples/jsm/exporters/STLExporter.js');
         const exporter = new STLExporter();
         const stlStr = exporter.parse(scene);
-        triggerDownload(new Blob([stlStr], { type: 'model/stl' }), `${fname}${q}.stl`, 'model/stl');
+        triggerDownload(new Blob([stlStr], { type: 'model/stl' }), `${fname}${suffix}.stl`, 'model/stl');
       }
 
       setExportOpen(false);
@@ -350,37 +360,53 @@ export default function ModelPage({ params }: { params: Promise<{ id: string }> 
                   Quality / Size
                 </p>
                 <div className="space-y-2">
-                  {QUALITY_OPTIONS.map((q) => (
-                    <button
-                      key={q.id}
-                      onClick={() => setQuality(q.id)}
-                      className={`w-full flex items-center gap-3 p-3.5 rounded-xl border transition-all text-left ${
-                        quality === q.id
-                          ? 'border-violet-500 bg-violet-500/10'
-                          : 'border-border/60 hover:border-violet-500/40 hover:bg-violet-500/5'
-                      }`}
-                    >
-                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                        quality === q.id ? 'border-violet-500' : 'border-border'
-                      }`}>
-                        {quality === q.id && <div className="w-2 h-2 rounded-full bg-violet-500" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-sm">{q.label}</span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                            quality === q.id
-                              ? 'bg-violet-500/20 text-violet-600 dark:text-violet-400'
-                              : 'bg-muted text-muted-foreground'
-                          }`}>
-                            {q.badge}
-                          </span>
+                  {QUALITY_OPTIONS.map((q) => {
+                    const isUltra = q.id === 'ultra';
+                    const isSelected = quality === q.id;
+                    return (
+                      <button
+                        key={q.id}
+                        onClick={() => setQuality(q.id)}
+                        className={`w-full flex items-center gap-3 p-3.5 rounded-xl border transition-all text-left relative overflow-hidden ${
+                          isUltra && isSelected
+                            ? 'border-amber-500 bg-amber-500/10'
+                            : isUltra
+                            ? 'border-amber-500/40 hover:border-amber-500 hover:bg-amber-500/5'
+                            : isSelected
+                            ? 'border-violet-500 bg-violet-500/10'
+                            : 'border-border/60 hover:border-violet-500/40 hover:bg-violet-500/5'
+                        }`}
+                      >
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                          isSelected
+                            ? isUltra ? 'border-amber-500' : 'border-violet-500'
+                            : 'border-border'
+                        }`}>
+                          {isSelected && (
+                            <div className={`w-2 h-2 rounded-full ${isUltra ? 'bg-amber-500' : 'bg-violet-500'}`} />
+                          )}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{q.sub}</p>
-                      </div>
-                      {quality === q.id && <CheckCircle2 className="w-4 h-4 text-violet-500 flex-shrink-0" />}
-                    </button>
-                  ))}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm">{q.label}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                              isUltra
+                                ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400'
+                                : isSelected
+                                ? 'bg-violet-500/20 text-violet-600 dark:text-violet-400'
+                                : 'bg-muted text-muted-foreground'
+                            }`}>
+                              {q.badge}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">{q.sub}</p>
+                        </div>
+                        {isSelected && (
+                          <CheckCircle2 className={`w-4 h-4 flex-shrink-0 ${isUltra ? 'text-amber-500' : 'text-violet-500'}`} />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -410,20 +436,30 @@ export default function ModelPage({ params }: { params: Promise<{ id: string }> 
               </div>
 
               {/* Info note */}
-              <div className="p-3 rounded-lg bg-muted/40 text-xs text-muted-foreground">
-                {quality === 'original'
+              <div className={`p-3 rounded-lg text-xs ${
+                quality === 'ultra'
+                  ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20'
+                  : 'bg-muted/40 text-muted-foreground'
+              }`}>
+                {quality === 'ultra'
+                  ? '⚡ Max-detail mesh · Full 2K textures · PBR materials · Unreal / Unity ready'
+                  : quality === 'original'
                   ? '✓ Full-resolution model · Best for professional use & 3D printing'
                   : quality === 'standard'
-                  ? '✓ Balanced — great for games, AR, and portfolio use'
-                  : '✓ Optimized for web embedding, fast loading apps'}
-                {format !== 'glb' && ' · Converted client-side using Three.js'}
+                  ? '✓ Balanced — great for AR, portfolio, and real-time apps'
+                  : '✓ Optimized for web embedding and fast-loading apps'}
+                {format !== 'glb' && quality !== 'ultra' && ' · Converted via Three.js'}
               </div>
 
               {/* Export button */}
               <Button
                 onClick={handleExport}
                 disabled={exporting}
-                className="w-full gap-2 bg-gradient-to-r from-violet-600 to-cyan-500 hover:opacity-90 border-0 text-white"
+                className={`w-full gap-2 border-0 text-white ${
+                  quality === 'ultra'
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-90'
+                    : 'bg-gradient-to-r from-violet-600 to-cyan-500 hover:opacity-90'
+                }`}
                 size="lg"
               >
                 {exporting ? (

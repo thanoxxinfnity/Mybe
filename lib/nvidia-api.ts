@@ -6,16 +6,16 @@ const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY;
 export async function generateImageFromText(prompt: string): Promise<string> {
   if (!NVIDIA_API_KEY) throw new Error('NVIDIA_API_KEY not configured');
 
-  const enhancedPrompt = `${prompt}, highly detailed, professional 3D render, photorealistic, studio lighting, high quality, sharp focus, 4k`;
+  const enhancedPrompt = `${prompt}, ultra detailed, 8K photorealistic render, PBR materials, physically based rendering, studio lighting, sharp focus, high resolution textures, professional CGI, octane render quality, subsurface scattering, ray tracing`;
 
   const response = await axios.post(
     'https://ai.api.nvidia.com/v1/genai/stabilityai/stable-diffusion-xl',
     {
       text_prompts: [
         { text: enhancedPrompt, weight: 1 },
-        { text: 'blurry, low quality, distorted, ugly, watermark, text', weight: -1 },
+        { text: 'blurry, low quality, distorted, ugly, watermark, text, flat, cartoon, anime', weight: -1 },
       ],
-      cfg_scale: 7,
+      cfg_scale: 8,
       sampler: 'K_EULER_ANCESTRAL',
       seed: 0,
       steps: 50,
@@ -47,16 +47,16 @@ export async function submitTrellisGeneration(imageBase64: string): Promise<{ re
     'https://ai.api.nvidia.com/v1/genai/microsoft/trellis',
     {
       image: `data:image/png;base64,${imageBase64}`,
-      mesh_simplify: 0.95,
-      texture_size: 1024,
-      render_mode: 'gaussian',
+      mesh_simplify: 0.98,
+      texture_size: 2048,
+      render_mode: 'mesh',
       sparse_structure_sampler_params: {
-        steps: 12,
+        steps: 20,
         cfg_strength: 7.5,
       },
       slat_sampler_params: {
-        steps: 12,
-        cfg_strength: 3,
+        steps: 20,
+        cfg_strength: 3.5,
       },
     },
     {
