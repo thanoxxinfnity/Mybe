@@ -4,7 +4,7 @@ import { getFirestore, type Firestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   // Fallback is a valid-format placeholder — real key must be set in .env.local
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? 'AIzaSyBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? 'AIzaSyAcigqUwrIetm-h-0B2AURJlAq_UEDT6Yg',
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? 'void-builder-14923.firebaseapp.com',
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? 'void-builder-14923',
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ?? 'void-builder-14923.firebasestorage.app',
