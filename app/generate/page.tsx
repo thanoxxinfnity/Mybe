@@ -194,7 +194,7 @@ export default function GeneratePage() {
         <div className="mb-10">
           <h1 className="text-3xl sm:text-4xl font-extrabold mb-2">Generate 3D Model</h1>
           <p className="text-muted-foreground">
-            Describe your model — Mybe AI generates it at max quality and saves it to the cloud.
+            Describe your model — X Protocol AI generates it at max quality and saves it to the cloud.
           </p>
         </div>
 

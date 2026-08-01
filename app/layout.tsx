@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Mybe - AI 3D Model Generator',
-  description: 'Generate stunning 3D models from text using Mybe AI. Get 100 free credits on signup.',
+  title: 'X Protocol - AI 3D Model Generator',
+  description: 'Generate stunning 3D models from text using X Protocol AI. Get 100 free credits on signup.',
 };
 
 export const viewport: Viewport = {

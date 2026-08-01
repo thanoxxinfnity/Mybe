@@ -53,10 +53,10 @@ export function Header({ user, credits, onUserChange }: HeaderProps) {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center text-white font-bold text-lg group-hover:scale-110 transition-transform">
-              M
+              X
             </div>
             <span className="font-bold text-xl hidden sm:inline bg-gradient-to-r from-violet-600 to-cyan-500 bg-clip-text text-transparent">
-              Mybe
+              X Protocol
             </span>
           </Link>
 

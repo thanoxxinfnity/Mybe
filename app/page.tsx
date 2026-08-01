@@ -59,7 +59,7 @@ export default function Home() {
           </h1>
 
           <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-            Describe anything. Mybe&apos;s AI generates a high-quality 3D model in minutes.
+            Describe anything. X Protocol&apos;s AI generates a high-quality 3D model in minutes.
             Every new account gets{' '}
             <span className="font-bold text-foreground">100 free credits</span>.
           </p>
@@ -121,7 +121,7 @@ export default function Home() {
               {
                 step: '02',
                 icon: <Zap className="w-6 h-6 text-fuchsia-500" />,
-                title: 'Mybe AI processes it',
+                title: 'X Protocol AI processes it',
                 desc: 'Our AI pipeline converts your text to a high-quality image, then into a full 3D model.',
               },
               {
@@ -172,7 +172,7 @@ export default function Home() {
       </section>
 
       <footer className="border-t border-border/40 px-4 py-8 text-center text-sm text-muted-foreground">
-        <p>Mybe &copy; 2026 · AI-powered 3D generation · All rights reserved</p>
+        <p>X Protocol &copy; 2026 · AI-powered 3D generation · All rights reserved</p>
       </footer>
     </div>
   );

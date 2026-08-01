@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: mybe
+    name: x-protocol
     runtime: docker
     region: oregon
     plan: free
