@@ -11,6 +11,7 @@ import { Header } from '@/components/header';
 import { Button } from '@/components/ui/button';
 import { Sparkles, Zap, Globe, Coins, ArrowRight } from 'lucide-react';
 import { getUserCredits } from '@/lib/firestore-helpers';
+import { checkRedirectResult } from '@/lib/auth-helper';
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
@@ -19,13 +20,18 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
+    // Handle Google redirect sign-in result (called after Google redirects back)
+    checkRedirectResult().then((redirectUser) => {
+      if (redirectUser) router.replace('/dashboard');
+    });
+
+    // Also handle already-signed-in users
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       setLoading(false);
       if (u) {
         const c = await getUserCredits(u.uid);
         setCredits(c);
-        // Redirect signed-in users to dashboard
         router.replace('/dashboard');
       }
     });

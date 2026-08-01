@@ -22,14 +22,13 @@ export function Header({ user, credits, onUserChange }: HeaderProps) {
   const handleSignIn = async () => {
     try {
       setLoading(true);
-      const u = await signInWithGoogle();
-      onUserChange?.(u);
-      if (u) router.push('/dashboard');
+      await signInWithGoogle();
+      // Page will redirect to Google — code below won't run
     } catch (e: any) {
       console.error('Sign in failed:', e?.code, e?.message);
-    } finally {
       setLoading(false);
     }
+    // Don't reset loading — browser is redirecting away
   };
 
   const handleSignOut = async () => {
