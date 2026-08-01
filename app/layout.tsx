@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { AuthRedirectHandler } from '@/components/auth-redirect-handler';
 
 export const metadata: Metadata = {
   title: 'X Protocol - AI 3D Model Generator',
@@ -15,6 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="antialiased bg-background text-foreground min-h-screen">
+        <AuthRedirectHandler />
         {children}
       </body>
     </html>

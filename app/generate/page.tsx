@@ -8,7 +8,6 @@ import { auth } from '@/lib/firebase';
 import { Header } from '@/components/header';
 import { Button } from '@/components/ui/button';
 import { getUserCredits } from '@/lib/firestore-helpers';
-import { checkRedirectResult } from '@/lib/auth-helper';
 import {
   Sparkles, Coins, AlertCircle, CheckCircle2, Clock, Zap, Info,
 } from 'lucide-react';
@@ -54,14 +53,6 @@ export default function GeneratePage() {
   const progressRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Complete Google redirect sign-in if returning from Google
-    checkRedirectResult().then((redirectUser) => {
-      if (redirectUser) {
-        setUser(redirectUser);
-        getUserCredits(redirectUser.uid).then(setCredits);
-      }
-    });
-
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       setLoading(false);
