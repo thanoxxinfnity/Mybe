@@ -7,7 +7,7 @@ import { User, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Header } from '@/components/header';
 import { Button } from '@/components/ui/button';
-import { getUserCredits } from '@/lib/firestore-helpers';
+import { fetchCreditsFromAPI } from '@/lib/firestore-helpers';
 import {
   Sparkles, Coins, AlertCircle, CheckCircle2, Clock, Zap, Info,
 } from 'lucide-react';
@@ -56,7 +56,7 @@ export default function GeneratePage() {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       setLoading(false);
-      if (u) setCredits(await getUserCredits(u.uid));
+      if (u) setCredits(await fetchCreditsFromAPI(() => u.getIdToken()));
     });
     return unsub;
   }, []);
@@ -122,14 +122,14 @@ export default function GeneratePage() {
             setStageLabel('Done!');
             setGenStatus('completed');
             setCompletedModelId(modelId);
-            const newCredits = await getUserCredits(user.uid);
+            const newCredits = await fetchCreditsFromAPI(() => user.getIdToken());
             setCredits(newCredits);
           } else if (statusData.status === 'failed') {
             if (pollRef.current) clearInterval(pollRef.current);
             stopProgress(0);
             setGenStatus('failed');
             setErrorMsg(statusData.error || 'Generation failed. Credit refunded.');
-            const newCredits = await getUserCredits(user.uid);
+            const newCredits = await fetchCreditsFromAPI(() => user.getIdToken());
             setCredits(newCredits);
           }
         } catch {
@@ -140,7 +140,7 @@ export default function GeneratePage() {
       stopProgress(0);
       setGenStatus('failed');
       setErrorMsg(err instanceof Error ? err.message : 'Failed to start generation');
-      const newCredits = await getUserCredits(user.uid);
+      const newCredits = await fetchCreditsFromAPI(() => user.getIdToken());
       setCredits(newCredits);
     }
   };

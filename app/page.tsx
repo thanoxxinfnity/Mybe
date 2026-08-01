@@ -10,7 +10,7 @@ import { auth } from '@/lib/firebase';
 import { Header } from '@/components/header';
 import { Button } from '@/components/ui/button';
 import { Sparkles, Zap, Globe, Coins, ArrowRight, Mail } from 'lucide-react';
-import { getUserCredits } from '@/lib/firestore-helpers';
+import { fetchCreditsFromAPI } from '@/lib/firestore-helpers';
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
@@ -23,7 +23,7 @@ export default function Home() {
       setUser(u);
       setLoading(false);
       if (u) {
-        const c = await getUserCredits(u.uid);
+        const c = await fetchCreditsFromAPI(() => u.getIdToken());
         setCredits(c);
       }
     });

@@ -8,7 +8,7 @@ import { auth } from '@/lib/firebase';
 import { Header } from '@/components/header';
 import { ModelCard } from '@/components/model-card';
 import { Button } from '@/components/ui/button';
-import { getUserCredits } from '@/lib/firestore-helpers';
+import { fetchCreditsFromAPI } from '@/lib/firestore-helpers';
 import { Globe, Search, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
@@ -36,7 +36,7 @@ export default function GalleryPage() {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
-        const c = await getUserCredits(u.uid);
+        const c = await fetchCreditsFromAPI(() => u.getIdToken());
         setCredits(c);
       }
     });

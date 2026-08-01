@@ -10,19 +10,22 @@ import {
   User,
 } from 'firebase/auth';
 import { auth } from './firebase';
-import { getUserProfile, createUserProfile } from './firestore-helpers';
 
 async function ensureUserProfile(user: User): Promise<void> {
   try {
-    const existing = await getUserProfile(user.uid);
-    if (!existing) {
-      await createUserProfile({
-        uid: user.uid,
+    const token = await user.getIdToken();
+    await fetch('/api/user/credits', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
         email: user.email,
-        displayName: user.displayName,
+        name: user.displayName,
         photoURL: user.photoURL,
-      });
-    }
+      }),
+    });
   } catch (err) {
     console.warn('Profile creation failed:', err);
   }

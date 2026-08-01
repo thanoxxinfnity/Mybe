@@ -8,7 +8,7 @@ import { auth } from '@/lib/firebase';
 import { Header } from '@/components/header';
 import { ModelViewer } from '@/components/model-viewer';
 import { Button } from '@/components/ui/button';
-import { getUserCredits } from '@/lib/firestore-helpers';
+import { fetchCreditsFromAPI } from '@/lib/firestore-helpers';
 import {
   Download, Eye, Calendar, User as UserIcon, ArrowLeft,
   Sparkles, AlertCircle, Clock, ChevronDown,
@@ -48,7 +48,7 @@ export default function ModelPage({ params }: { params: Promise<{ id: string }> 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
-      if (u) setCredits(await getUserCredits(u.uid));
+      if (u) setCredits(await fetchCreditsFromAPI(() => u.getIdToken()));
     });
     return unsub;
   }, []);

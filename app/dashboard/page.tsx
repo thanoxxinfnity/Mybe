@@ -8,7 +8,7 @@ import { auth } from '@/lib/firebase';
 import { Header } from '@/components/header';
 import { ModelCard } from '@/components/model-card';
 import { Button } from '@/components/ui/button';
-import { getUserCredits, getUserModels } from '@/lib/firestore-helpers';
+import { fetchCreditsFromAPI, getUserModels } from '@/lib/firestore-helpers';
 import { ModelMetadata } from '@/lib/schemas';
 import {
   Coins, Sparkles, LayoutDashboard, Box, AlertCircle,
@@ -25,7 +25,7 @@ export default function DashboardPage() {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
-        const [c, m] = await Promise.all([getUserCredits(u.uid), getUserModels(u.uid)]);
+        const [c, m] = await Promise.all([fetchCreditsFromAPI(() => u.getIdToken()), getUserModels(u.uid)]);
         setCredits(c);
         setModels(m);
       }

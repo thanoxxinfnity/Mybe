@@ -57,6 +57,20 @@ export async function getUserCredits(userId: string): Promise<number> {
   return profile?.credits ?? 0;
 }
 
+// Client-side: fetch credits via server API (respects 15-day reset, bypasses Firestore rules)
+export async function fetchCreditsFromAPI(getToken: () => Promise<string>): Promise<number> {
+  try {
+    const token = await getToken();
+    const res = await fetch('/api/user/credits', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    return data.credits ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
 export async function deductCredit(userId: string): Promise<void> {
   await updateDoc(doc(db, 'users', userId), {
     credits: increment(-1),
